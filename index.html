@@ -1,0 +1,92 @@
+<!--
+ * @Author: yuanzhirong
+ * @Date: 2023-03-06 11:23:32
+ * @LastEditors: yuanzhirong
+ * @LastEditTime: 2023-03-06 17:21:46
+ * @Description: 
+-->
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <button @click="oauth()">Login with Github</button>
+      <button @click="getUser()">getUser</button>
+      <div v-if="userInfo">
+        Hello {{userInfo.name}}
+        <img :src="userInfo.avatar_url" />
+      </div>
+    </div>
+    <script></script>
+    <script>
+      axios.interceptors.request.use(
+        (config) => {
+          const token = window.localStorage.getItem("token");
+          if (token) {
+            console.log(config.headers);
+            // 判断是否存在token，如果存在的话，则每个http header都加上token
+            // Bearer是JWT的认证头部信息
+            config.headers["Authorization"] = "Bearer " + token;
+          }
+          return config;
+        },
+        (err) => {
+          return Promise.reject(err);
+        }
+      );
+
+      // axios.interceptors.response.use(
+      //   response => {
+      //     console.log(response)
+      //     app.logs.push(JSON.stringify(response.data));
+      //     return response;
+      //   },
+      //   err => {
+      //     console.log(response)
+      //     app.logs.push(JSON.stringify(response.data));
+      //     return Promise.reject(err);
+      //   }
+      // );
+      var app = new Vue({
+        el: "#app",
+        data: {
+          logs: [],
+          userInfo: null,
+        },
+        mounted: function () {
+          if (this.getQueryString("code")) {
+            this.getToken(this.getQueryString("code"));
+          }
+        },
+        beforeDestroy: function() {
+          window.localStorage.removeItem('token')
+        },
+        methods: {
+          getQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) {
+              return unescape(r[2]);
+            }
+            return null;
+          },
+          async oauth() {
+            window.open("/auth/github/login", "_self");
+          },
+          async getToken(code) {
+            const res = await axios.get(`/auth/github/callback?code=${code}`);
+            console.log("re1s:", res.data);
+            window.localStorage.setItem("token", res.data);
+          },
+          async getUser() {
+            const res = await axios.get("/auth/github/userinfo");
+            this.userInfo = res.data;
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
